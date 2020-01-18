@@ -67,7 +67,16 @@ def precipitation():
     sel = [Measurement.date,Measurement.prcp]
     measure_12month = session.query(*sel).filter(Measurement.date >= year_ago.strftime(format_str)).order_by(Measurement.date).all()
     session.close()
-    return jsonify(measure_12month)
+    #return results in dictionary format
+    precipitation_data = []
+    for date, precipitation_value in measure_12month:
+        precip_dict = {}
+        precip_dict["date"] = date
+        precip_dict["precipitation"] = precipitation_value
+        precipitation_data.append(precip_dict)
+
+    return jsonify(precipitation_data)
+
 
 @app.route("/api/v1.0/stations")
 def stations():
@@ -116,14 +125,15 @@ def start_only(start):
     # Create our session (link) from Python to the DB
     session = Session(engine)
 
-    # This function called `calc_temps` will accept start date and end date in the format '%Y-%m-%d' 
-    # and return the minimum, average, and maximum temperatures for that range of dates
+    # This function called `calc_temps1` will accept start date in the format '%Y-%m-%d' 
+    # and return the minimum, average, and maximum temperatures from the start date
+    # to the end of the data set
     def calc_temps1(start_date):
         """TMIN, TAVG, and TMAX for a list of dates.
     
         Args:
             start_date (string): A date string in the format %Y-%m-%d
-            end_date (string): A date string in the format %Y-%m-%d
+            
         
         Returns:
             TMIN, TAVE, and TMAX
@@ -136,6 +146,30 @@ def start_only(start):
     session.close()
     return jsonify(start_result)
 
+@app.route("/api/v1.0/<start>/<end>")
+def start_end(start, end):
+    # Create our session (link) from Python to the DB
+    session = Session(engine)
+
+    # This function called `calc_temps2` will accept start date and end date in the format '%Y-%m-%d' 
+    # and return the minimum, average, and maximum temperatures for that range of dates
+    def calc_temps2(start_date, end_date):
+        """TMIN, TAVG, and TMAX for a list of dates.
+    
+        Args:
+            start_date (string): A date string in the format %Y-%m-%d
+            end_date (string): A date string in the format %Y-%m-%d
+        
+        Returns:
+            TMIN, TAVE, and TMAX
+        """
+    
+        return session.query(func.min(Measurement.tobs), func.avg(Measurement.tobs), func.max(Measurement.tobs)).\
+        filter(Measurement.date >= start_date).filter(Measurement.date <= end_date).all()
+    
+    start_result =calc_temps2(start, end)
+    session.close()
+    return jsonify(start_result)
 
 
 if __name__ == '__main__':
