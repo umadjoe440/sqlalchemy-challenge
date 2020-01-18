@@ -39,10 +39,15 @@ app = Flask(__name__)
 def welcome():
     """List all available api routes."""
     return (
-        f"Available Routes:<br/>"
+        f"<h2>WELCOME TO THE HAWAII CLIMATE INFO API</h2>"
+        f"<h3>Available Routes:</h3>"
         f"/api/v1.0/precipitation<br/>"
         f"/api/v1.0/stations<br/>"
         f"/api/v1.0/tobs<br/>"
+        f"<b>Temperature Averages from Start Date to end of Data Set:</b><br/>"
+        f"/api/v1.0/YYYY-MM-DD<br/>"
+        f"<b>Temperature Averages for Date Range:</b><br/>"
+        f"/api/v1.0/YYYY-MM-DD/YYYY-MM-DD"
     )
 
 @app.route("/api/v1.0/precipitation")
@@ -105,6 +110,32 @@ def tobs():
     busy_12month = session.query(*sel).filter(Measurement.station == busy_station_name).filter(Measurement.date >= busy_station_12_months_back.strftime(format_str)).order_by(Measurement.date).all()
     session.close()
     return jsonify(busy_12month)
+
+@app.route("/api/v1.0/<start>")
+def start_only(start):
+    # Create our session (link) from Python to the DB
+    session = Session(engine)
+
+    # This function called `calc_temps` will accept start date and end date in the format '%Y-%m-%d' 
+    # and return the minimum, average, and maximum temperatures for that range of dates
+    def calc_temps1(start_date):
+        """TMIN, TAVG, and TMAX for a list of dates.
+    
+        Args:
+            start_date (string): A date string in the format %Y-%m-%d
+            end_date (string): A date string in the format %Y-%m-%d
+        
+        Returns:
+            TMIN, TAVE, and TMAX
+        """
+    
+        return session.query(func.min(Measurement.tobs), func.avg(Measurement.tobs), func.max(Measurement.tobs)).\
+        filter(Measurement.date >= start_date).all()
+    
+    start_result =calc_temps1(start)
+    session.close()
+    return jsonify(start_result)
+
 
 
 if __name__ == '__main__':
